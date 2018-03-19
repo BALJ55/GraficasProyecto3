@@ -77,6 +77,7 @@
 		<script src="js/controls/TrackballControls.js"></script>
 		<script src="js/loaders/MTLLoader.js"></script>
 		<script src="js/libs/dat.gui.min.js"></script>
+		<script src="js/controls/FirstPersonControls.js"></script>
 
 		<script src="js/loaders/LoaderSupport.js"></script>
 		<script src="js/loaders/OBJLoader2.js"></script>
@@ -84,16 +85,16 @@
 
 			'use strict';
 
-			var OBJLoader2Example = (function () {
+			var CanvasRender = (function () {
 
 				var Validator = THREE.LoaderSupport.Validator;
 
-				function OBJLoader2Example( elementToBindTo ) {
+				function CanvasRender( elementToBindTo ) {
 					this.renderer = null;
 					this.canvas = elementToBindTo;
 					this.aspectRatio = 1;
 					this.recalcAspectRatio();
-					this.houseRef = null;
+					this.objectRef = {};
 					this.treeRef = null;
 					this.scene = null;
 					this.cameraDefaults = {
@@ -109,7 +110,7 @@
 					this.controls = null;
 				}
 
-				OBJLoader2Example.prototype.initGL = function () {
+				CanvasRender.prototype.initGL = function () {
 					this.renderer = new THREE.WebGLRenderer( {
 						canvas: this.canvas,
 						antialias: true,
@@ -118,16 +119,19 @@
 					this.renderer.setClearColor( 0x050505 );
 
 					this.scene = new THREE.Scene();
-					this.setHouse = function(object){
-					    this.houseRef = object;
+					this.setRef = function(object,name){
+					    this.objectRef[name] = object;
                     };
-					this.setTree = function (object) {
-                        this.treeRef = object;
-                    }
+
 
 					this.camera = new THREE.PerspectiveCamera( this.cameraDefaults.fov, this.aspectRatio, this.cameraDefaults.near, this.cameraDefaults.far );
 					this.resetCamera();
-					this.controls = new THREE.TrackballControls( this.camera, this.renderer.domElement );
+
+                    this.controls = new THREE.FirstPersonControls( this.camera , this.renderer.domElement);
+                    this.controls.movementSpeed = 1000;
+                    this.controls.lookSpeed = 0.01;
+
+                    this.controls = new THREE.TrackballControls( this.camera, this.renderer.domElement );
 
 					var ambientLight = new THREE.AmbientLight( 0x404040 );
 					var directionalLight1 = new THREE.DirectionalLight( 0xC0C090 );
@@ -136,66 +140,64 @@
 					directionalLight1.position.set( -100, -50, 100 );
 					directionalLight2.position.set( 100, 50, -100 );
 
-					this.scene.add( directionalLight1 );
+                    var cielo = new THREE.SphereBufferGeometry( 5000, 60, 40 );
+                    // invert the geometry on the x-axis so that all of the faces point inward
+                    cielo.scale( - 1, 1, 1 );
+                    var nubes = new THREE.MeshBasicMaterial( {
+                        map: new THREE.TextureLoader().load( 'texturas/sky.jpg' )
+                    } );
+                    var skybox = new THREE.Mesh( cielo, nubes );
+
+
+                    var piso = new THREE.PlaneGeometry( 8500, 8500, 32 );
+                    piso.rotateX(300);
+                    var suelo = new THREE.MeshBasicMaterial( {
+                        map: new THREE.TextureLoader().load( 'texturas/grass.jpg' )
+                    } );
+					var plane = new THREE.Mesh( piso, suelo );
+                    this.scene.add( plane );
+
+                    this.scene.add( skybox );
+
+
+                    this.scene.add( directionalLight1 );
 					this.scene.add( directionalLight2 );
 					this.scene.add( ambientLight );
 
-					var helper = new THREE.GridHelper( 1200, 60, 0xFF4444, 0x404040 );
-					this.scene.add( helper );
 				};
 
-				OBJLoader2Example.prototype.renderHouse = function () {
-				    console.log('Loading House...');
-					var modelName = 'arbol 1';
-					this._reportProgress( { detail: { text: 'Loading: ' + modelName } } );
-
-					var scope = this;
-					var objLoader = new THREE.OBJLoader2();
-					var callbackOnLoad = function ( event ) {
-						scope.scene.add( event.detail.loaderRootNode );
-						console.log( 'Loading complete: ' , event.detail );
-                        scope.setHouse(event.detail.loaderRootNode);
-                        scope._reportProgress( { detail: { text: '' } } );
-                        console.log('house is:',scope.houseRef)
-					};
-
-					var onLoadMtl = function ( materials ) {
-						objLoader.setModelName( modelName );
-						objLoader.setMaterials( materials );
-						objLoader.setLogging( true, true );
-						objLoader.load( 'modelos/arbol/tree.obj', callbackOnLoad, null, null, null, false );
-					};
-					objLoader.loadMtl( 'modelos/arbol/tree.mtl', null, onLoadMtl );
-				};
-				OBJLoader2Example.prototype.renderTree = function () {
-                    var modelName = 'arbol';
-                    this._reportProgress( { detail: { text: 'Loading: ' + modelName } } );
+                CanvasRender.prototype.renderModel = function (nombre, objeto, material) {
+                    this._reportProgress( { detail: { text: 'Loading: ' + nombre } } );
 
                     var scope = this;
                     var objLoader = new THREE.OBJLoader2();
                     var callbackOnLoad = function ( event ) {
+                        if(nombre == 'arbol'){
+                            event.detail.loaderRootNode.scale.set(10,10,10);
+                            event.detail.loaderRootNode.translateX(50);
+						}
                         scope.scene.add( event.detail.loaderRootNode );
-                        scope.treeRef = event.detail.loaderRootNode;
+                        scope.setRef(event.detail.loaderRootNode,nombre);
                         console.log( 'Loading complete: ' + event.detail.modelName );
                         scope._reportProgress( { detail: { text: '' } } );
                     };
 
-                    var arbol = function ( materials ) {
-                        objLoader.setModelName( 'arbol1' );
+                    var modelo = function ( materials ) {
+                        objLoader.setModelName( nombre );
                         objLoader.setMaterials( materials );
                         objLoader.setLogging( true, true );
-                        objLoader.load( 'modelos/arbol/OC41_9.obj', callbackOnLoad, null, null, null, false );
+                        objLoader.load( objeto, callbackOnLoad, null, null, null, false );
                     };
-                    objLoader.loadMtl( 'modelos/arbol/OC41_9.mtl', null, arbol );
+                    objLoader.loadMtl( material, null, modelo );
                 };
 
-				OBJLoader2Example.prototype._reportProgress = function( event ) {
+				CanvasRender.prototype._reportProgress = function( event ) {
 					var output = Validator.verifyInput( event.detail.text, '' );
 					console.log( 'Progress: ' + output );
 					document.getElementById( 'feedback' ).innerHTML = output;
 				};
 
-				OBJLoader2Example.prototype.resizeDisplayGL = function () {
+				CanvasRender.prototype.resizeDisplayGL = function () {
 					this.controls.handleResize();
 
 					this.recalcAspectRatio();
@@ -203,72 +205,107 @@
 
 					this.updateCamera();
 				};
-				OBJLoader2Example.prototype.keyDownHandler = function(key){
+				CanvasRender.prototype.keyDownHandler = function(key){
                     console.log(key);
                     switch(key){
+                        //house scale up
                         case 'q':
-                            this.houseRef = OBJLoader2Example.prototype.scale(1.1,this.houseRef);
+                            this.objectRef.casa = CanvasRender.prototype.scale(1.1,this.objectRef.casa);
                             break;
+						//house scale down
                         case 'e':
-                            this.houseRef = OBJLoader2Example.prototype.scale(0.9,this.houseRef);
+                            this.objectRef.casa = CanvasRender.prototype.scale(0.9,this.objectRef.casa);
                             break;
+						//house move right
                         case 'd':
-                            this.houseRef = OBJLoader2Example.prototype.move(this.houseRef,10,0,0);
+                            this.objectRef.casa = CanvasRender.prototype.move(this.objectRef.casa,10,0,0);
                             break;
+						//house move down
                         case 's':
-                            this.houseRef = OBJLoader2Example.prototype.move(this.houseRef,0,0,10);
+                            this.objectRef.casa = CanvasRender.prototype.move(this.objectRef.casa,0,0,10);
                             break;
+						//house move right
                         case 'a':
-                            this.houseRef = OBJLoader2Example.prototype.move(this.houseRef,-10,0,0);
+                            this.objectRef.casa = CanvasRender.prototype.move(this.objectRef.casa,-10,0,0);
                             break;
-                        case 'w':
-                            this.houseRef = OBJLoader2Example.prototype.move(this.houseRef,0,0,-10);
+						//house move backwards
+						case 'w':
+                            this.objectRef.casa = CanvasRender.prototype.move(this.objectRef.casa,0,0,-10);
                             break;
+						//house rotate z
+						case 'r':
+                            this.objectRef.casa = CanvasRender.prototype.rotate(this.objectRef.casa,0.1,0,0);
+                            break;
+						//house rotate y
+                        case 'f':
+                            this.objectRef.casa = CanvasRender.prototype.rotate(this.objectRef.casa,0,0.1,0);
+                            break;
+						//house rotate x
+                        case 'c':
+                            this.objectRef.casa = CanvasRender.prototype.rotate(this.objectRef.casa,0,0,0.1);
+                            break;
+						//house move up
+						case 'z':
+						    this.objectRef.casa = CanvasRender.prototype.move(this.objectRef.casa,0,10,0);
+						    break;
+						//house move down
+                        case 'x':
+                            this.objectRef.casa = CanvasRender.prototype.move(this.objectRef.casa,0,-10,0);
+                            break;
+
+
                     }
 				};
-				OBJLoader2Example.prototype.scale = function (scale, object) {
+				CanvasRender.prototype.scale = function (scale, object) {
+				    try{
+                        object.scale.x = object.scale.x *scale;
+                        object.scale.y = object.scale.y *scale;
+                        object.scale.z = object.scale.z *scale;
+					}catch(e){}
 
-                    object.scale.x = object.scale.x *scale;
-                    object.scale.y = object.scale.y *scale;
-                    object.scale.z = object.scale.z *scale;
                     return object;
                 };
-				OBJLoader2Example.prototype.move = function (object, x, y, z) {
-                    console.log(object);
+				CanvasRender.prototype.move = function (object, x, y, z) {
                     object.position.x = object.position.x +x;
                     object.position.y = object.position.y +y;
                     object.position.z = object.position.z +z;
                     return object;
-                }
+                };
+				CanvasRender.prototype.rotate = function(object, x,y,z){
+                    object.rotateX(x);
+                    object.rotateY(y);
+                    object.rotateZ(z);
+				    return object;
+				};
 
-				OBJLoader2Example.prototype.recalcAspectRatio = function () {
+				CanvasRender.prototype.recalcAspectRatio = function () {
 					this.aspectRatio = ( this.canvas.offsetHeight === 0 ) ? 1 : this.canvas.offsetWidth / this.canvas.offsetHeight;
 				};
 
-				OBJLoader2Example.prototype.resetCamera = function () {
+				CanvasRender.prototype.resetCamera = function () {
 					this.camera.position.copy( this.cameraDefaults.posCamera );
 					this.cameraTarget.copy( this.cameraDefaults.posCameraTarget );
 
 					this.updateCamera();
 				};
 
-				OBJLoader2Example.prototype.updateCamera = function () {
+				CanvasRender.prototype.updateCamera = function () {
 					this.camera.aspect = this.aspectRatio;
 					this.camera.lookAt( this.cameraTarget );
 					this.camera.updateProjectionMatrix();
 				};
 
-				OBJLoader2Example.prototype.render = function () {
+				CanvasRender.prototype.render = function () {
 					if ( ! this.renderer.autoClear ) this.renderer.clear();
 					this.controls.update();
 					this.renderer.render( this.scene, this.camera );
 				};
 
-				return OBJLoader2Example;
+				return CanvasRender;
 
 			})();
 
-			var app = new OBJLoader2Example( document.getElementById( 'example' ) );
+			var app = new CanvasRender( document.getElementById( 'example' ) );
 
 			var resizeWindow = function () {
 				app.resizeDisplayGL();
@@ -288,8 +325,10 @@
 			console.log( 'Starting initialisation phase...' );
 			app.initGL();
 			app.resizeDisplayGL();
-			app.renderHouse();
+//			app.renderHouse();
 //			app.renderTree();
+			app.renderModel('casa','modelos/casa/WoodenCabinObj.obj','modelos/casa/WoodenCabinObj.mtl');
+			app.renderModel('arbol','modelos/arbol/tree.obj','modelos/arbol/tree.mtl');
 
 			render();
 

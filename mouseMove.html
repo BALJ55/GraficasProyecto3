@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>three.js webgl - geometry - terrain</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body {
+            color: #61443e;
+            font-family: Monospace;
+            font-size: 13px;
+            text-align: center;
+            background-color: #bfd1e5;
+            margin: 0px;
+            overflow: hidden;
+        }
+
+        #info {
+            position: absolute;
+            top: 0px;
+            width: 100%;
+            padding: 5px;
+        }
+
+        a {
+            color: #a06851;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container"><br/><br/><br/><br/><br/>Generating world...</div>
+<div id="info">presiona G para desplegar más ayuda
+</div>
+
+<script src="data/three.js"></script>
+<script src="js/Detector.js"></script>
+
+<script src="js/controls/FirstPersonControls.js"></script>
+
+<script src="js/libs/stats.min.js"></script>
+<script src="js/loaders/MTLLoader.js"></script>
+<script src="js/libs/dat.gui.min.js"></script>
+<script src="js/controls/FirstPersonControls.js"></script>
+
+<script src="js/loaders/LoaderSupport.js"></script>
+<script src="js/loaders/OBJLoader2.js"></script>
+
+
+<script>
+    if (!Detector.webgl) {
+        Detector.addGetWebGLMessage();
+        document.getElementById('container').innerHTML = "";
+    }
+    var container, stats;
+    var camera, controls, scene, renderer;
+    var clock = new THREE.Clock();
+
+    init();
+    animate();
+    function init() {
+        container = document.getElementById('container');
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 20000);
+        scene = new THREE.Scene();
+        controls = new THREE.FirstPersonControls(camera);
+        controls.movementSpeed = 500;
+        controls.lookSpeed = 0.1;
+        camera.position.y = 50;
+        camera.position.x = 500;
+        console.log(camera)
+
+        var ambientLight = new THREE.AmbientLight( 0x404040 );
+        var directionalLight1 = new THREE.DirectionalLight( 0xC0C090 );
+        var directionalLight2 = new THREE.DirectionalLight( 0xC0C090 );
+
+        directionalLight1.position.set( -100, -50, 100 );
+        directionalLight2.position.set( 100, 50, -100 );
+
+        this.scene.add( directionalLight1 );
+        this.scene.add( directionalLight2 );
+        this.scene.add( ambientLight );
+
+        var cielo = new THREE.SphereBufferGeometry(5000, 60, 40);
+        // invert the geometry on the x-axis so that all of the faces point inward
+        cielo.scale(-1, 1, 1);
+        var nubes = new THREE.MeshBasicMaterial({
+            map: new THREE.TextureLoader().load('texturas/sky.jpg')
+        });
+        var skybox = new THREE.Mesh(cielo, nubes);
+        var piso = new THREE.PlaneGeometry(8500, 8500, 32);
+        piso.rotateX(300);
+        var pasto = new THREE.TextureLoader().load('texturas/grass.jpg');
+        pasto.wrapS = THREE.RepeatWrapping;
+        pasto.wrapT = THREE.RepeatWrapping;
+        pasto.repeat.set( 64, 64 );
+        var suelo = new THREE.MeshBasicMaterial({
+            map: pasto
+        });
+        var plane = new THREE.Mesh(piso, suelo);
+        scene.add(plane);
+        scene.add(skybox);
+
+        //carga de objetos
+        renderModel('casa', 'modelos/casa/WoodenCabinObj.obj', 'modelos/casa/WoodenCabinObj.mtl');
+        renderModel('arbol','modelos/arbol/tree.obj','modelos/arbol/tree.mtl');
+
+
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.innerHTML = "";
+        container.appendChild(renderer.domElement);
+        stats = new Stats();
+        container.appendChild(stats.dom);
+        //
+        window.addEventListener('resize', onWindowResize, false);
+    }
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        controls.handleResize();
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        render();
+        stats.update();
+    }
+    function render() {
+        controls.update(clock.getDelta());
+        renderer.render(scene, camera);
+    }
+
+    function renderModel(nombre, objeto, material) {
+        var objLoader = new THREE.OBJLoader2();
+        var callbackOnLoad = function (event) {
+            if (nombre == 'arbol') {
+                event.detail.loaderRootNode.scale.set(10, 10, 10);
+                event.detail.loaderRootNode.translateX(50);
+            }
+            scene.add(event.detail.loaderRootNode);
+            console.log('Loading complete: ' + event.detail.modelName);
+        };
+
+        var modelo = function (materials) {
+            objLoader.setModelName(nombre);
+            objLoader.setMaterials(materials);
+            objLoader.setLogging(true, true);
+            objLoader.load(objeto, callbackOnLoad, null, null, null, false);
+        };
+        objLoader.loadMtl(material, null, modelo);
+    }
+
+
+
+</script>
+
+</body>
+</html>
