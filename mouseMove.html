@@ -51,15 +51,27 @@
 <body>
 
 <div id="container"><br/><br/><br/><br/><br/>Generating world...</div>
-<div id="info">presiona G para desplegar la ayuda
+<div id="info"><b>presiona G para desplegar la ayuda</b>
 </div>
 <div id="help">
     <div class="halfControls">
+        <h3>Presiona G para cerrar la ayuda</h3>
+
+        <p>Controles para movimiento:</p>
+        <p>Click derecho: acercarse</p>
+        <p>Click izquierdo: alejarse</p>
+        <p>Mouse: cambiar dirección de la camara</p>
+        <br>
+        <br>
+        <br>
+        <p>------------------------------------------------</p>
+        <p>Créditos:</p>
         <p>Autor: Byron Andrés Mota Hernández</p>
         <p>Carnét: 15246</p>
         <p>Proyecto 3 Gráficas por computadora</p>
-        <p>Modelos:</p>
-        <p>Arbol: </p>
+        <p>Disclaimer: No soy due;o de las texturas ni de los modelos implementados en este programa</p>
+        <p>Librerías:</p>
+        <p> - Generador de terrenos: https://github.com/IceCreamYou/THREE.Terrain</p>
 
     </div>
     <div class="halfControls">
@@ -193,8 +205,6 @@
         var skybox = new THREE.Mesh(cielo, nubes);
 
         //creado de piso
-//        var piso = new THREE.PlaneGeometry(8500, 8500, 32);
-//        piso.rotateX(300);
         var pasto = new THREE.TextureLoader().load('texturas/grass.jpg');
         pasto.wrapS = THREE.RepeatWrapping;
         pasto.wrapT = THREE.RepeatWrapping;
@@ -202,31 +212,28 @@
         var suelo = new THREE.MeshBasicMaterial({
             map: pasto
         });
-//        var plane = new THREE.Mesh(piso, suelo);
 
+        //generado del terreno
         var xS = 63, yS = 63;
         terrain = THREE.Terrain({
             easing: THREE.Terrain.Linear,
             frequency: 2.5,
-            heightmap: THREE.Terrain.DiamondSquare,
-            material:new THREE.MeshBasicMaterial({
+            heightmap: THREE.Terrain.Hill,
+            material: new THREE.MeshBasicMaterial({
                 map: pasto
             }),
-            maxHeight: 50,
+            maxHeight: 100,
             minHeight: -250,
             steps: 1,
             useBufferGeometry: false,
             xSegments: xS,
             xSize: 8500,
             ySegments: yS,
-            ySize: 8500,
+            ySize: 8500
         });
-// Assuming you already have your global scene, add the terrain to it
-        scene.add(terrain);
-        console.log('terrain:',terrain);
 
-        //agregado de pasto y cielo
-//        scene.add(plane);
+        //montaje de texturas a la escena
+        scene.add(terrain);
         scene.add(skybox);
 
 
@@ -242,6 +249,8 @@
         container.appendChild(renderer.domElement);
         stats = new Stats();
         container.appendChild(stats.dom);
+
+
         //resize handler
         window.addEventListener('resize', onWindowResize, false);
         window.addEventListener('keypress', keyDownHandler, false);
@@ -263,7 +272,7 @@
     //render function
     function render() {
         controls.update(clock.getDelta());
-        cielo.rotateY(0.001);
+        cielo.rotateY(0.0005);
         renderer.render(scene, camera);
     }
 
@@ -281,7 +290,7 @@
             event.detail.loaderRootNode.translateZ(z);
             scene.add(event.detail.loaderRootNode);
             setRef(event.detail.loaderRootNode, nombre)
-            console.log('Loading complete: ' + event.detail.modelName);
+            console.log('Loading complete: ', event.detail.loaderRootNode);
         };
 
         var modelo = function (materials) {
