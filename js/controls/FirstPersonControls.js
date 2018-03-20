@@ -282,8 +282,8 @@ THREE.FirstPersonControls = function ( object, domElement ) {
 	this.domElement.addEventListener( 'mousedown', _onMouseDown, false );
 	this.domElement.addEventListener( 'mouseup', _onMouseUp, false );
 
-	window.addEventListener( 'keydown', _onKeyDown, false );
-	window.addEventListener( 'keyup', _onKeyUp, false );
+	// window.addEventListener( 'keydown', _onKeyDown, false );
+	// window.addEventListener( 'keyup', _onKeyUp, false );
 
 	function bind( scope, fn ) {
 

@@ -25,12 +25,76 @@
         a {
             color: #a06851;
         }
+
+        #help {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 100vw;
+            background-color: white;
+        }
+
+        .halfControls {
+            float: left;
+            height: inherit;
+            width: 33%;
+        }
+
+        .credits {
+            width: 100%;
+            height: 20%;
+        }
     </style>
 </head>
 <body>
 
 <div id="container"><br/><br/><br/><br/><br/>Generating world...</div>
-<div id="info">presiona G para desplegar más ayuda
+<div id="info">presiona G para desplegar la ayuda
+</div>
+<div id="help">
+    <div class="halfControls">
+        <p>Autor: Byron Andrés Mota Hernández</p>
+        <p>Carnét: 15246</p>
+        <p>Proyecto 3 Gráficas por computadora</p>
+        <p>Modelos:</p>
+        <p>Arbol: </p>
+
+    </div>
+    <div class="halfControls">
+        <p>Controles para casa:</p>
+        <p>W: mover casa hacia el frente</p>
+        <p>A: mover casa a la izquierda</p>
+        <p>S: mover casa hacia atrás</p>
+        <p>D: mover casa a la derecha</p>
+        <p>Z: mover casa hacia arriba</p>
+        <p>X: mover casa hacia abajo</p>
+        <p>Q: crecer casa</p>
+        <p>E: achiquitar casa</p>
+        <p>1: shear casa</p>
+        <p>2: unshear casa</p>
+        <p>r: rotar casa sobre x</p>
+        <p>f: rotar casa sobre y</p>
+        <p>c: rotar casa sobre z</p>
+    </div>
+    <div class="halfControls">
+        <p>Controles para arbol:</p>
+        <p>I: mover arbol hacia el frente</p>
+        <p>J: mover arbol a la izquierda</p>
+        <p>K: mover arbol hacia atrás</p>
+        <p>L: mover arbol a la derecha</p>
+        <p>N: mover arbol hacia arriba</p>
+        <p>M: mover arbol hacia abajo</p>
+        <p>U: crecer arbol</p>
+        <p>O: achiquitar arbol</p>
+        <p>3: shear arbol</p>
+        <p>4: unshear arbol</p>
+        <p>y: rotar arbol sobre x</p>
+        <p>h: rotar arbol sobre y</p>
+        <p>b: rotar arbol sobre z</p>
+    </div>
+
 </div>
 
 <script src="data/three.js"></script>
@@ -46,6 +110,7 @@
 <script src="js/loaders/LoaderSupport.js"></script>
 <script src="js/loaders/OBJLoader2.js"></script>
 
+<script src="build/THREE.Terrain.min.js"></script>
 
 <script>
     if (!Detector.webgl) {
@@ -55,6 +120,32 @@
     var container, stats;
     var camera, controls, scene, renderer;
     var clock = new THREE.Clock();
+    var objectRef = {};
+    var helpOpen = false;
+    var cielo;
+
+    //shear matrix y matrix normal
+
+    var Syx = 1,
+        Szx = 0,
+        Sxy = 0,
+        Szy = 0,
+        Sxz = 0,
+        Syz = 0;
+
+    var shear = new THREE.Matrix4();
+
+    shear.set(1, Syx, Szx, 0,
+        Sxy, 1, Szy, 0,
+        Sxz, Syz, 1, 0,
+        0, 0, 0, 1);
+
+    var normal = new THREE.Matrix4();
+
+    normal.set(1, -Syx, Szx, 0,
+        Sxy, 1, Szy, 0,
+        Sxz, Syz, 1, 0,
+        0, 0, 0, 1);
 
     init();
     animate();
@@ -80,21 +171,21 @@
         camera.position.x = 500;
 
         //luces
-        var ambientLight = new THREE.AmbientLight( 0x404040 );
-        var directionalLight1 = new THREE.DirectionalLight( 0xC0C090 );
-        var directionalLight2 = new THREE.DirectionalLight( 0xC0C090 );
+        var ambientLight = new THREE.AmbientLight(0x404040);
+        var directionalLight1 = new THREE.DirectionalLight(0xC0C090);
+        var directionalLight2 = new THREE.DirectionalLight(0xC0C090);
 
         //posicionado de luces
-        directionalLight1.position.set( -100, -50, 100 );
-        directionalLight2.position.set( 100, 50, -100 );
+        directionalLight1.position.set(-100, -50, 100);
+        directionalLight2.position.set(100, 50, -100);
 
         //agregado de luces
-        this.scene.add( directionalLight1 );
-        this.scene.add( directionalLight2 );
-        this.scene.add( ambientLight );
+        this.scene.add(directionalLight1);
+        this.scene.add(directionalLight2);
+        this.scene.add(ambientLight);
 
         //creado de skybox
-        var cielo = new THREE.SphereBufferGeometry(5000, 60, 40);
+        cielo = new THREE.SphereBufferGeometry(5000, 60, 40);
         cielo.scale(-1, 1, 1);
         var nubes = new THREE.MeshBasicMaterial({
             map: new THREE.TextureLoader().load('texturas/sky.jpg')
@@ -102,24 +193,46 @@
         var skybox = new THREE.Mesh(cielo, nubes);
 
         //creado de piso
-        var piso = new THREE.PlaneGeometry(8500, 8500, 32);
-        piso.rotateX(300);
+//        var piso = new THREE.PlaneGeometry(8500, 8500, 32);
+//        piso.rotateX(300);
         var pasto = new THREE.TextureLoader().load('texturas/grass.jpg');
         pasto.wrapS = THREE.RepeatWrapping;
         pasto.wrapT = THREE.RepeatWrapping;
-        pasto.repeat.set( 128, 128 );
+        pasto.repeat.set(128, 128);
         var suelo = new THREE.MeshBasicMaterial({
             map: pasto
         });
-        var plane = new THREE.Mesh(piso, suelo);
+//        var plane = new THREE.Mesh(piso, suelo);
+
+        var xS = 63, yS = 63;
+        terrain = THREE.Terrain({
+            easing: THREE.Terrain.Linear,
+            frequency: 2.5,
+            heightmap: THREE.Terrain.DiamondSquare,
+            material:new THREE.MeshBasicMaterial({
+                map: pasto
+            }),
+            maxHeight: 50,
+            minHeight: -250,
+            steps: 1,
+            useBufferGeometry: false,
+            xSegments: xS,
+            xSize: 8500,
+            ySegments: yS,
+            ySize: 8500,
+        });
+// Assuming you already have your global scene, add the terrain to it
+        scene.add(terrain);
+        console.log('terrain:',terrain);
 
         //agregado de pasto y cielo
-        scene.add(plane);
+//        scene.add(plane);
         scene.add(skybox);
 
-        //carga de objetos
-        renderModel('casa', 'modelos/casa/WoodenCabinObj.obj', 'modelos/casa/WoodenCabinObj.mtl');
-        renderModel('arbol','modelos/arbol/tree.obj','modelos/arbol/tree.mtl');
+
+        //carga de arbol y casa
+        renderModel('casa', 'modelos/casa/WoodenCabinObj.obj', 'modelos/casa/WoodenCabinObj.mtl', 0, 0, 0, 1);
+        renderModel('arbol', 'modelos/arbol/tree.obj', 'modelos/arbol/tree.mtl', 60, 0, 0, 10);
 
         //ajustes de renderer
         renderer = new THREE.WebGLRenderer();
@@ -131,6 +244,8 @@
         container.appendChild(stats.dom);
         //resize handler
         window.addEventListener('resize', onWindowResize, false);
+        window.addEventListener('keypress', keyDownHandler, false);
+
     }
     //resize function
     function onWindowResize() {
@@ -148,17 +263,24 @@
     //render function
     function render() {
         controls.update(clock.getDelta());
+        cielo.rotateY(0.001);
         renderer.render(scene, camera);
     }
+
+    function setRef(ref, name) {
+        objectRef[name] = ref;
+    }
     //carga de objetos
-    function renderModel(nombre, objeto, material) {
+    function renderModel(nombre, objeto, material, x, y, z, amp) {
         var objLoader = new THREE.OBJLoader2();
         var callbackOnLoad = function (event) {
-            if (nombre == 'arbol') {
-                event.detail.loaderRootNode.scale.set(10, 10, 10);
-                event.detail.loaderRootNode.translateX(50);
-            }
+
+            event.detail.loaderRootNode.scale.set(amp, amp, amp);
+            event.detail.loaderRootNode.translateX(x);
+            event.detail.loaderRootNode.translateY(y);
+            event.detail.loaderRootNode.translateZ(z);
             scene.add(event.detail.loaderRootNode);
+            setRef(event.detail.loaderRootNode, nombre)
             console.log('Loading complete: ' + event.detail.modelName);
         };
 
@@ -171,6 +293,147 @@
         objLoader.loadMtl(material, null, modelo);
     }
 
+    function keyDownHandler(key) {
+        console.log(key);
+        switch (key.key) {
+            //house scale up
+            case 'q':
+                objectRef.casa = scale(1.1, objectRef.casa);
+                break;
+            //house scale down
+            case 'e':
+                objectRef.casa = scale(0.9, objectRef.casa);
+                break;
+            //house move right
+            case 'd':
+                objectRef.casa = move(objectRef.casa, 10, 0, 0);
+                break;
+            //house move down
+            case 'w':
+                objectRef.casa = move(objectRef.casa, 0, 0, 10);
+                break;
+            //house move right
+            case 'a':
+                objectRef.casa = move(objectRef.casa, -10, 0, 0);
+                break;
+            //house move backwards
+            case 's':
+                objectRef.casa = move(objectRef.casa, 0, 0, -10);
+                break;
+            //house rotate z
+            case 'r':
+                objectRef.casa = rotate(objectRef.casa, 0.1, 0, 0);
+                break;
+            //house rotate y
+            case 'f':
+                objectRef.casa = rotate(objectRef.casa, 0, 0.1, 0);
+                break;
+            //house rotate x
+            case 'c':
+                objectRef.casa = rotate(objectRef.casa, 0, 0, 0.1);
+                break;
+            //house move up
+            case 'z':
+                objectRef.casa = move(objectRef.casa, 0, 10, 0);
+                break;
+            //house move down
+            case 'x':
+                objectRef.casa = move(objectRef.casa, 0, -10, 0);
+                break;
+
+            //tree scale up
+            case 'u':
+                objectRef.arbol = scale(1.1, objectRef.arbol);
+                break;
+            //tree scale down
+            case 'o':
+                objectRef.arbol = scale(0.9, objectRef.arbol);
+                break;
+            //tree move right
+            case 'j':
+                objectRef.arbol = move(objectRef.arbol, 10, 0, 0);
+                break;
+            //tree move down
+            case 'i':
+                objectRef.arbol = move(objectRef.arbol, 0, 0, 10);
+                break;
+            //tree move right
+            case 'l':
+                objectRef.arbol = move(objectRef.arbol, -10, 0, 0);
+                break;
+            //tree move backwards
+            case 'k':
+                objectRef.arbol = move(objectRef.arbol, 0, 0, -10);
+                break;
+            //tree rotate z
+            case 'y':
+                objectRef.arbol = rotate(objectRef.arbol, 0.1, 0, 0);
+                break;
+            //tree rotate y
+            case 'h':
+                objectRef.arbol = rotate(objectRef.arbol, 0, 0.1, 0);
+                break;
+            //tree rotate x
+            case 'b':
+                objectRef.arbol = rotate(objectRef.arbol, 0, 0, 0.1);
+                break;
+            //tree move up
+            case 'n':
+                objectRef.arbol = move(objectRef.arbol, 0, 10, 0);
+                break;
+            //tree move down
+            case 'm':
+                objectRef.arbol = move(objectRef.arbol, 0, -10, 0);
+                break;
+
+            //shear house
+            case '1':
+                console.log(objectRef.casa)
+                objectRef.casa.applyMatrix(shear);
+                break;
+            case '2':
+                objectRef.casa.applyMatrix(normal);
+                break;
+
+            //shear tree
+            case '3':
+                console.log(objectRef.casa)
+                objectRef.arbol.applyMatrix(shear);
+                break;
+            case '4':
+                objectRef.arbol.applyMatrix(normal);
+                break;
+            //help
+            case 'g':
+                if (helpOpen) {
+                    document.getElementById('help').style.display = 'none';
+                    helpOpen = false;
+                } else {
+                    document.getElementById('help').style.display = 'block';
+                    helpOpen = true;
+                }
+
+
+        }
+    }
+    function scale(scale, object) {
+        object.scale.x = object.scale.x * scale;
+        object.scale.y = object.scale.y * scale;
+        object.scale.z = object.scale.z * scale;
+        return object;
+    }
+    function move(object, x, y, z) {
+        object.position.x = object.position.x + x;
+        object.position.y = object.position.y + y;
+        object.position.z = object.position.z + z;
+        return object;
+    }
+    function rotate(object, x, y, z) {
+        object.rotateX(x);
+        object.rotateY(y);
+        object.rotateZ(z);
+        return object;
+    }
 
 
 </script>
